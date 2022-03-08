@@ -1,0 +1,6 @@
+/*.zarr
+/venv*
+climatehack_getting_started.zip
+/.ipynb_checkpoints
+/__pycache__
+training.ipynb
