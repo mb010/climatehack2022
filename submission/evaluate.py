@@ -12,8 +12,23 @@ class Evaluator(BaseEvaluator):
         In this case, it loads the trained model (in evaluation mode)."""
 
         self.model = Model()
-        self.model.load_state_dict(torch.load("model.pt"))
+        self.model.load_state_dict(torch.load("model.pt", map_location=torch.device('cpu')))
         self.model.eval()
+    
+    def pre_process(self, data):
+        data = torch.from_numpy(data).view(-1,12,128,128)[:,:,32:96,32:96] # Cut out center 64 cells
+        data = data/1024
+        return data.reshape(24,64,64)
+    
+    def single_pass(self, data):
+        # My model outputs 24 sequence elements.
+        assert data.shape == (12,64,64)
+        with torch.no_grad():
+            last_state_list, layer_output = (
+                self.model(data)
+            )
+            prediction = last_state_list[0][0].view(24, 64, 64).detach().numpy()
+        return output
 
     def predict(self, coordinates: np.ndarray, data: np.ndarray) -> np.ndarray:
         """Makes a prediction for the next two hours of satellite imagery.
@@ -25,21 +40,15 @@ class Evaluator(BaseEvaluator):
         Returns:
             np.ndarray: an array of 24 64*64 satellite image predictions (24, 64, 64)
         """
-
         assert coordinates.shape == (2, 128, 128)
         assert data.shape == (12, 128, 128)
-
-        with torch.no_grad():
-            prediction = (
-                self.model(torch.from_numpy(data).view(-1, 12 * 128 * 128))
-                .view(24, 64, 64)
-                .detach()
-                .numpy()
-            )
-
-            assert prediction.shape == (24, 64, 64)
-
-            return prediction
+        
+        data = self.pre_process(data)
+        prediction = single_pass(data)
+        
+        assert prediction.shape == (24, 64, 64)
+        
+        return prediction
 
 
 def main():

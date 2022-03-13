@@ -4,3 +4,5 @@ climatehack_getting_started.zip
 /.ipynb_checkpoints
 /__pycache__
 cleaned_data
+/submission/.ipynb_checkpoints
+/submission/__pycache__
