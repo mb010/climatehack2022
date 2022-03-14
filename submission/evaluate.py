@@ -15,19 +15,26 @@ class Evaluator(BaseEvaluator):
         self.model.load_state_dict(torch.load("model.pt", map_location=torch.device('cpu')))
         self.model.eval()
 
-    def pre_process(self, data):
-        data = torch.from_numpy(data).view(-1,12,1,128,128)[:,:,:,32:96,32:96] # Cut out center 64 cells
-        data = data/1023
+    def pre_process(self, data, max_value=1023):
+        t, h, w = data.shape
+        data = torch.from_numpy(data).view(-1,12,1,128,128)
+        #print(data.shape)
+        #print(t, h, w)
+        #print(h//2-32,h//2+32,w//2-32,w//+32)
+        data = data[:,:,:,h//2-32:h//2+32,w//2-32:w//2+32] # Cut out center 64 cells
+        #print(data.shape)
+        data = data/max_value
         return data
 
     def single_pass(self, data):
         # My model outputs 24 sequence elements.
+        #print("data in pass", data.shape)
         assert data.squeeze().shape == (12,64,64)
         with torch.no_grad():
             last_state_list, layer_output = (
                 self.model(data)
             )
-            prediction = last_state_list[0][0].view(1, 64, 64).detach().numpy()
+            prediction = last_state_list[0][0][:1,:1].view(1, 64, 64).detach().numpy()
         return prediction
 
     def predict(self, coordinates: np.ndarray, data: np.ndarray) -> np.ndarray:
@@ -42,18 +49,20 @@ class Evaluator(BaseEvaluator):
         """
         assert coordinates.shape == (2, 128, 128)
         assert data.shape == (12, 128, 128)
+        #print(data.shape)
 
         data = self.pre_process(data)
-        
+
         # Create final 24 step prediction from single time step predictions
         prediction = []
-        data_tmp = data.copy()
+        data_tmp = data#.copy()
         while len(prediction)<24:
             single_prediction = self.single_pass(data_tmp)
+            #print("single_prediction.shape",single_prediction.shape)
             prediction.append(single_prediction.squeeze())
-            data_tmp = np.concatenate((data[1:], single_prediction), axis=0)
+            data_tmp = torch.from_numpy(np.concatenate((data[:,1:], single_prediction.reshape(1,1,1,64,64)), axis=1))
         prediction = np.stack(prediction, axis=0)
-        
+
         # If our model predicts all 24 steps:
         #prediction = self.single_pass(data)
 
