@@ -1,7 +1,1 @@
 >>> TRAINING START
-Epoch: 0/5000; running_loss/count: 5.3776523742876156e-06
-Epoch: 1/5000; running_loss/count: 4.0520372472150655e-06
-Epoch: 2/5000; running_loss/count: 3.8300183597396884e-06
-Epoch: 3/5000; running_loss/count: 3.6524426991894147e-06
-Epoch: 4/5000; running_loss/count: 3.4503911720320964e-06
-Epoch: 5/5000; running_loss/count: 3.371788182700064e-06
