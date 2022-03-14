@@ -5,4 +5,11 @@ climatehack_getting_started.zip
 /__pycache__
 cleaned_data
 /submission/.ipynb_checkpoints
+/features.npz
+/targets.npz
+/submission/validate.py
+.gitignore
 /submission/__pycache__
+/.gitignore
+
+submission/*.pt
