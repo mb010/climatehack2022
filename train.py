@@ -18,9 +18,9 @@ class scale():
         return image/self.limit
 
 def train():
-    EPOCHS=int(5*10e2)
-    EARLY_STOPPING_AFTER=20
-    TARGET_TIME_STEPS=24
+    EPOCHS=int(1000)
+    EARLY_STOPPING_AFTER=50
+    TARGET_TIME_STEPS=1
     BATCH_SIZE=8
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -41,8 +41,8 @@ def train():
     # https://github.com/ndrplz/ConvLSTM_pytorch
     model = Model(
         input_dim=1,
-        hidden_dim=[64, 64, 64, TARGET_TIME_STEPS],
-        kernel_size=(3,3),
+        hidden_dim=[64, 128, 128, TARGET_TIME_STEPS],
+        kernel_size=(5,5),
         num_layers=4,
         batch_first=True,
         bias=True,
@@ -131,7 +131,10 @@ def train():
             break
 
         losses.append(running_loss / count)
-        print(f"Epoch: {epoch}/{EPOCHS}; running_loss/count: {losses[-1]}")
+        print(f"Epoch: {epoch}/{EPOCHS}; running_loss/count: {losses[-1]}; validation_loss: {val_loss}; min_validation: {counter==0}")
+        if epoch in np.arange(0,1000,50):
+            torch.save(model.state_dict(), f'submission/model_{epoch}.pt')
+            
     np.save("./losses.npy", np.asarray(losses))
     
     torch.save(model.state_dict(), 'submission/model.pt')

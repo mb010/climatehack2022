@@ -17,8 +17,8 @@ class Evaluator(BaseEvaluator):
 
     def pre_process(self, data):
         data = torch.from_numpy(data).view(-1,12,1,128,128)[:,:,:,32:96,32:96] # Cut out center 64 cells
-        data = data/1024
-        return data#.reshape(24,64,64)
+        data = data/1023
+        return data
 
     def single_pass(self, data):
         # My model outputs 24 sequence elements.
@@ -27,7 +27,7 @@ class Evaluator(BaseEvaluator):
             last_state_list, layer_output = (
                 self.model(data)
             )
-            prediction = last_state_list[0][0].view(24, 64, 64).detach().numpy()
+            prediction = last_state_list[0][0].view(1, 64, 64).detach().numpy()
         return prediction
 
     def predict(self, coordinates: np.ndarray, data: np.ndarray) -> np.ndarray:
@@ -44,7 +44,18 @@ class Evaluator(BaseEvaluator):
         assert data.shape == (12, 128, 128)
 
         data = self.pre_process(data)
-        prediction = self.single_pass(data)
+        
+        # Create final 24 step prediction from single time step predictions
+        prediction = []
+        data_tmp = data.copy()
+        while len(prediction)<24:
+            single_prediction = self.single_pass(data_tmp)
+            prediction.append(single_prediction.squeeze())
+            data_tmp = np.concatenate((data[1:], single_prediction), axis=0)
+        prediction = np.stack(prediction, axis=0)
+        
+        # If our model predicts all 24 steps:
+        #prediction = self.single_pass(data)
 
         assert prediction.shape == (24, 64, 64)
 
