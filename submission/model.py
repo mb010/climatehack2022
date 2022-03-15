@@ -1,8 +1,10 @@
+import math
+
 import torch
 import torch.nn as nn
-import math
-#from .perceiver_pytorch import PerceiverIO, MultiPerceiver
-#from .ConvLSTM.model import ED
+
+# from .perceiver_pytorch import PerceiverIO, MultiPerceiver
+# from .ConvLSTM.model import ED
 
 #########################################
 #       Improve this basic model!       #
@@ -29,14 +31,13 @@ class Model_template(nn.Module):
 #########################################
 #                ConvLSTM               #
 #########################################
-'''
+"""
 Adapted from:
 https://github.com/ndrplz/ConvLSTM_pytorch/blob/master/convlstm.py
-'''
+"""
 
 
 class ConvLSTMCell(nn.Module):
-
     def __init__(self, input_dim, hidden_dim, kernel_size, bias):
         """
         Initialize ConvLSTM cell.
@@ -62,16 +63,20 @@ class ConvLSTMCell(nn.Module):
         self.padding = kernel_size[0] // 2, kernel_size[1] // 2
         self.bias = bias
 
-        self.conv = nn.Conv2d(in_channels=self.input_dim + self.hidden_dim,
-                              out_channels=4 * self.hidden_dim,
-                              kernel_size=self.kernel_size,
-                              padding=self.padding,
-                              bias=self.bias)
+        self.conv = nn.Conv2d(
+            in_channels=self.input_dim + self.hidden_dim,
+            out_channels=4 * self.hidden_dim,
+            kernel_size=self.kernel_size,
+            padding=self.padding,
+            bias=self.bias,
+        )
 
     def forward(self, input_tensor, cur_state):
         h_cur, c_cur = cur_state
 
-        combined = torch.cat([input_tensor, h_cur], dim=1)  # concatenate along channel axis
+        combined = torch.cat(
+            [input_tensor, h_cur], dim=1
+        )  # concatenate along channel axis
 
         combined_conv = self.conv(combined)
         cc_i, cc_f, cc_o, cc_g = torch.split(combined_conv, self.hidden_dim, dim=1)
@@ -87,8 +92,22 @@ class ConvLSTMCell(nn.Module):
 
     def init_hidden(self, batch_size, image_size):
         height, width = image_size
-        return (torch.zeros(batch_size, self.hidden_dim, height, width, device=self.conv.weight.device),
-                torch.zeros(batch_size, self.hidden_dim, height, width, device=self.conv.weight.device))
+        return (
+            torch.zeros(
+                batch_size,
+                self.hidden_dim,
+                height,
+                width,
+                device=self.conv.weight.device,
+            ),
+            torch.zeros(
+                batch_size,
+                self.hidden_dim,
+                height,
+                width,
+                device=self.conv.weight.device,
+            ),
+        )
 
 
 class ConvLSTM(nn.Module):
@@ -119,15 +138,16 @@ class ConvLSTM(nn.Module):
         >> h = last_states[0][0]  # 0 for layer index, 0 for h index
     """
 
-    def __init__(self,
-                input_dim=1,
-                hidden_dim=[64, 128, 128, 24],
-                kernel_size=(3,3),
-                num_layers=4,
-                batch_first=True,
-                bias=True,
-                return_all_layers=False
-                ):
+    def __init__(
+        self,
+        input_dim=1,
+        hidden_dim=[64, 128, 128, 1],
+        kernel_size=(5, 5),
+        num_layers=4,
+        batch_first=True,
+        bias=True,
+        return_all_layers=False,
+    ):
         super(ConvLSTM, self).__init__()
 
         self._check_kernel_size_consistency(kernel_size)
@@ -136,7 +156,7 @@ class ConvLSTM(nn.Module):
         kernel_size = self._extend_for_multilayer(kernel_size, num_layers)
         hidden_dim = self._extend_for_multilayer(hidden_dim, num_layers)
         if not len(kernel_size) == len(hidden_dim) == num_layers:
-            raise ValueError('Inconsistent list length.')
+            raise ValueError("Inconsistent list length.")
 
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
@@ -150,10 +170,14 @@ class ConvLSTM(nn.Module):
         for i in range(0, self.num_layers):
             cur_input_dim = self.input_dim if i == 0 else self.hidden_dim[i - 1]
 
-            cell_list.append(ConvLSTMCell(input_dim=cur_input_dim,
-                                          hidden_dim=self.hidden_dim[i],
-                                          kernel_size=self.kernel_size[i],
-                                          bias=self.bias))
+            cell_list.append(
+                ConvLSTMCell(
+                    input_dim=cur_input_dim,
+                    hidden_dim=self.hidden_dim[i],
+                    kernel_size=self.kernel_size[i],
+                    bias=self.bias,
+                ).to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
+            )
 
         self.cell_list = nn.ModuleList(cell_list)
 
@@ -182,8 +206,7 @@ class ConvLSTM(nn.Module):
             raise NotImplementedError()
         else:
             # Since the init is done in forward. Can send image size here
-            hidden_state = self._init_hidden(batch_size=b,
-                                             image_size=(h, w))
+            hidden_state = self._init_hidden(batch_size=b, image_size=(h, w))
 
         layer_output_list = []
         last_state_list = []
@@ -198,21 +221,23 @@ class ConvLSTM(nn.Module):
             for t in range(seq_len):
                 h, c = self.cell_list[layer_idx](
                     input_tensor=cur_layer_input[:, t, :, :, :],
-                    cur_state=[h, c]
+                    cur_state=[h, c],
                 )
                 output_inner.append(h)
-                #print(f"h.shape: {h.shape}")
+                # print(f"h.shape: {h.shape}")
 
             layer_output = torch.stack(output_inner, dim=1)
             cur_layer_input = layer_output
-            #print(f"layer_output: {layer_output.shape}")
-            layer_output_list.append(layer_output.transpose(1,0)) #Switch batch and seq dimensions.
+            # print(f"layer_output: {layer_output.shape}")
+            layer_output_list.append(
+                layer_output.transpose(1, 0)
+            )  # Switch batch and seq dimensions.
             last_state_list.append([h, c])
 
         if not self.return_all_layers:
             layer_output_list = layer_output_list[-1:]
             last_state_list = last_state_list[-1:]
-        #print(f"layer_output_list: {len(layer_output_list[-1])}")
+        # print(f"layer_output_list: {len(layer_output_list[-1])}")
         return layer_output_list, last_state_list
 
     def _init_hidden(self, batch_size, image_size):
@@ -223,24 +248,31 @@ class ConvLSTM(nn.Module):
 
     @staticmethod
     def _check_kernel_size_consistency(kernel_size):
-        if not (isinstance(kernel_size, tuple) or
-                (isinstance(kernel_size, list) and all([isinstance(elem, tuple) for elem in kernel_size]))):
-            raise ValueError('`kernel_size` must be tuple or list of tuples')
+        if not (
+            isinstance(kernel_size, tuple)
+            or (
+                isinstance(kernel_size, list)
+                and all([isinstance(elem, tuple) for elem in kernel_size])
+            )
+        ):
+            raise ValueError("`kernel_size` must be tuple or list of tuples")
 
     @staticmethod
     def _extend_for_multilayer(param, num_layers):
         if not isinstance(param, list):
             param = [param] * num_layers
         return param
+
+
 #########################################
 #    Select which model to evaluate     #
 #########################################
-#Model = PerceiverIO
-#Model = MultiPerceiver
+# Model = PerceiverIO
+# Model = MultiPerceiver
 
 # ConvLSTM # https://github.com/jhhuang96/ConvLSTM-PyTorch
-#encoder = Encoder(encoder_params[0], encoder_params[1]).cuda()
-#decoder = Decoder(decoder_params[0], decoder_params[1]).cuda()
-#Model = ED
+# encoder = Encoder(encoder_params[0], encoder_params[1]).cuda()
+# decoder = Decoder(decoder_params[0], decoder_params[1]).cuda()
+# Model = ED
 
 Model = ConvLSTM
