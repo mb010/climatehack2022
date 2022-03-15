@@ -141,12 +141,13 @@ class ConvLSTM(nn.Module):
     def __init__(
         self,
         input_dim=1,
-        hidden_dim=[64, 128, 128, 1],
-        kernel_size=(5, 5),
-        num_layers=4,
+        hidden_dim=[32, 32, 32, 32, 32, TARGET_TIME_STEPS],
+        kernel_size=(3,3),
+        num_layers=6,
         batch_first=True,
         bias=True,
         return_all_layers=False,
+        device = torch.device('cuda')
     ):
         super(ConvLSTM, self).__init__()
 
@@ -176,7 +177,7 @@ class ConvLSTM(nn.Module):
                     hidden_dim=self.hidden_dim[i],
                     kernel_size=self.kernel_size[i],
                     bias=self.bias,
-                ).to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
+                ).to(device)
             )
 
         self.cell_list = nn.ModuleList(cell_list)

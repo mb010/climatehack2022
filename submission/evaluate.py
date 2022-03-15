@@ -4,6 +4,10 @@ import torch
 from climatehack import BaseEvaluator
 from model import Model
 
+tmp="""
+python doxa_cli.py user login
+python doxa_cli.py agent upload climatehack ./submission
+"""
 
 class Evaluator(BaseEvaluator):
     def setup(self):
@@ -12,7 +16,7 @@ class Evaluator(BaseEvaluator):
         In this case, it loads the trained model (in evaluation mode)."""
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = Model()
+        self.model = Model(device = self.device)
         self.model.load_state_dict(torch.load("model.pt", map_location=self.device))
         self.model.eval()
 
@@ -36,7 +40,7 @@ class Evaluator(BaseEvaluator):
         with torch.no_grad():
             last_state_list, layer_output = self.model(data)
             prediction = (
-                last_state_list[0][0][:1, :1].view(1, 64, 64).detach().cpu().numpy()
+                last_state_list[0][0][:1, :1].view(1, 64, 64).detach()
             )
         return prediction
 
@@ -62,12 +66,11 @@ class Evaluator(BaseEvaluator):
         while len(prediction) < 24:
             single_prediction = self.single_pass(data_tmp)
             # print("single_prediction.shape",single_prediction.shape)
-            prediction.append(single_prediction.squeeze())
-            data_tmp = torch.from_numpy(
-                np.concatenate(
-                    (data[:, 1:].detach().cpu().numpy(), single_prediction.reshape(1, 1, 1, 64, 64)), axis=1
-                )
-            ).to(self.device)
+            prediction.append(single_prediction.cpu().numpy().squeeze())
+            data_tmp = torch.cat(
+                [data[:, 1:].detach(), single_prediction.view(1, 1, 1, 64, 64)],
+                dim=1
+            )
         prediction = np.stack(prediction, axis=0) * 1023
 
         # If our model predicts all 24 steps:
