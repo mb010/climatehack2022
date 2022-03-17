@@ -13,3 +13,5 @@ cleaned_data
 /.gitignore
 
 submission/*.pt
+evaluate.zip
+evaluate/*

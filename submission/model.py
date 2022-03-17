@@ -141,7 +141,7 @@ class ConvLSTM(nn.Module):
     def __init__(
         self,
         input_dim=1,
-        hidden_dim=[32, 32, 32, 32, 32, TARGET_TIME_STEPS],
+        hidden_dim=[32, 32, 32, 32, 32, 1],
         kernel_size=(3,3),
         num_layers=6,
         batch_first=True,

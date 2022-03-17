@@ -26,9 +26,9 @@ class Evaluator(BaseEvaluator):
         # print(data.shape)
         # print(t, h, w)
         # print(h//2-32,h//2+32,w//2-32,w//+32)
-        data = data[
-            :, :, :, h // 2 - 32 : h // 2 + 32, w // 2 - 32 : w // 2 + 32
-        ]  # Cut out center 64 cells
+        #data = data[
+        #    :, :, :, h // 2 - 32 : h // 2 + 32, w // 2 - 32 : w // 2 + 32
+        #]  # Cut out center 64 cells
         # print(data.shape)
         data = data / max_value
         return data
@@ -36,11 +36,11 @@ class Evaluator(BaseEvaluator):
     def single_pass(self, data):
         # My model outputs 24 sequence elements.
         # print("data in pass", data.shape)
-        assert data.squeeze().shape == (12, 64, 64)
+        #assert data.squeeze().shape == (12, 64, 64)
         with torch.no_grad():
             last_state_list, layer_output = self.model(data)
             prediction = (
-                last_state_list[0][0][:1, :1].view(1, 64, 64).detach()
+                last_state_list[0][0][:1, :1].view(1, 128, 128).detach()
             )
         return prediction
 
@@ -68,14 +68,14 @@ class Evaluator(BaseEvaluator):
             # print("single_prediction.shape",single_prediction.shape)
             prediction.append(single_prediction.cpu().numpy().squeeze())
             data_tmp = torch.cat(
-                [data[:, 1:].detach(), single_prediction.view(1, 1, 1, 64, 64)],
+                [data[:, 1:].detach(), single_prediction.view(1, 1, 1, 128, 128)],
                 dim=1
             )
         prediction = np.stack(prediction, axis=0) * 1023
 
         # If our model predicts all 24 steps:
         # prediction = self.single_pass(data)
-
+        prediction = prediction[:,32:96,32:96]
         assert prediction.shape == (24, 64, 64)
 
         return prediction
