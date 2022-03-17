@@ -1,5 +1,5 @@
 # climatehack2022
-My attempt at [climatehack2022](https://climatehack.ai/).
+This is my attempt at [climatehack2022](https://climatehack.ai/).
 The goal was to build a nowcasting model to predict the next 2 hours of satalite imagery (24 frames) given the previous hour (12 frames).
 
 With my final attempts reaching 72nd overall I feel like this was a reasonable attempt with some clear avenues for improvement given enough time (which I sadly did not have).
